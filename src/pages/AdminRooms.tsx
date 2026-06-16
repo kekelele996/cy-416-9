@@ -2,7 +2,7 @@ import { Button, Drawer, Space, Table, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import { EquipmentTag } from '@/components/common/EquipmentTag';
 import { RoomForm } from '@/components/common/RoomForm';
-import { RoomStatus } from '@/constants/room';
+import { DEPARTMENTS, RoomStatus } from '@/constants/room';
 import type { Room } from '@/models/room';
 import { useRoomStore } from '@/stores/roomStore';
 import { formatCapacity, formatRoomStatus, getRoomStatusColor } from '@/utils/formatters';
@@ -23,7 +23,7 @@ export function AdminRooms() {
             会议室管理
           </Typography.Title>
           <Typography.Paragraph className="!m-0 text-[var(--rf-muted)]">
-            维护设备、开放时间与会议室状态
+            维护设备、开放时间、适用部门与会议室状态
           </Typography.Paragraph>
         </div>
         <Button
@@ -54,6 +54,22 @@ export function AdminRooms() {
                     {record.floor} · {formatCapacity(record.capacity)}
                   </div>
                 </div>
+              ),
+            },
+            {
+              title: '适用部门',
+              dataIndex: 'departments',
+              key: 'departments',
+              render: (departments: Room['departments']) => (
+                <Space size={[4, 4]} wrap>
+                  {departments.length === 0 ? (
+                    <Tag color="green">所有部门</Tag>
+                  ) : (
+                    departments.map((dept) => (
+                      <Tag key={dept}>{DEPARTMENTS[dept]}</Tag>
+                    ))
+                  )}
+                </Space>
               ),
             },
             {

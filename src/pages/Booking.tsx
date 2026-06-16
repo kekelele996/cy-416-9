@@ -13,7 +13,7 @@ import { useBookingStore } from '@/stores/bookingStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { formatRoomStatus } from '@/utils/formatters';
 import { toIsoFromDateAndTime } from '@/utils/timeRange';
-import { assertRoomBookable, normalizeAttendees, validateAttendees, validateTimeRange } from '@/utils/validators';
+import { assertRoomAccessible, assertRoomBookable, normalizeAttendees, validateAttendees, validateTimeRange } from '@/utils/validators';
 
 interface BookingFormValues {
   room_id: string;
@@ -26,23 +26,29 @@ export function Booking() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const rooms = useRoomStore((state) => state.rooms);
+  const getAccessibleRooms = useRoomStore((state) => state.getAccessibleRooms);
   const bookings = useBookingStore((state) => state.bookings);
   const createBooking = useBookingStore((state) => state.create);
   const loading = useBookingStore((state) => state.loading);
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('10:00');
   const selectedRoomId = Form.useWatch('room_id', form);
+
+  const accessibleRooms = useMemo(() => {
+    return getAccessibleRooms(currentUser?.department, isAdmin);
+  }, [currentUser?.department, getAccessibleRooms, isAdmin, rooms]);
+
   const selectedRoom = useMemo(() => rooms.find((room) => room.id === selectedRoomId), [rooms, selectedRoomId]);
 
   useEffect(() => {
     const roomId = searchParams.get('roomId');
-    const fallbackRoom = rooms.find((room) => room.status === RoomStatus.AVAILABLE);
+    const fallbackRoom = accessibleRooms.find((room) => room.status === RoomStatus.AVAILABLE);
     if (roomId || fallbackRoom) {
       form.setFieldValue('room_id', roomId ?? fallbackRoom?.id);
     }
-  }, [form, rooms, searchParams]);
+  }, [accessibleRooms, form, searchParams]);
 
   const draftPreview = useMemo<Partial<BookingDraft>>(
     () => ({
@@ -61,12 +67,13 @@ export function Booking() {
     const end = toIsoFromDateAndTime(date, endTime);
     const timeError = validateTimeRange(start, end);
     const roomError = assertRoomBookable(selectedRoom);
+    const accessError = assertRoomAccessible(selectedRoom, currentUser?.department, isAdmin);
     const attendeesError = validateAttendees(attendees);
 
-    if (timeError || roomError || attendeesError || !currentUser) {
+    if (timeError || roomError || accessError || attendeesError || !currentUser) {
       form.setFields([
         ...(attendeesError ? [{ name: 'attendees' as const, errors: [attendeesError] }] : []),
-        ...(roomError ? [{ name: 'room_id' as const, errors: [roomError] }] : []),
+        ...(roomError || accessError ? [{ name: 'room_id' as const, errors: [roomError || accessError || ''] }] : []),
       ]);
       return;
     }
@@ -104,7 +111,7 @@ export function Booking() {
             <Form.Item name="room_id" label="会议室" rules={[{ required: true, message: FORM_MESSAGES.required }]}>
               <Select
                 placeholder="选择会议室"
-                options={rooms.map((room) => ({
+                options={accessibleRooms.map((room) => ({
                   label: `${room.name} · ${room.floor} · ${formatRoomStatus(room.status)}`,
                   value: room.id,
                   disabled: room.status !== RoomStatus.AVAILABLE,
@@ -163,7 +170,11 @@ export function Booking() {
           <Typography.Title level={4}>所选会议室日程</Typography.Title>
           <div className="stack-list">
             {bookings
-              .filter((booking) => booking.room_id === selectedRoomId)
+              .filter((booking) => {
+                const room = rooms.find((r) => r.id === booking.room_id);
+                const isVisible = !room || room.departments.length === 0 || isAdmin || currentUser?.department ? room?.departments.includes(currentUser?.department as any) : true;
+                return booking.room_id === selectedRoomId && isVisible;
+              })
               .slice(0, 6)
               .map((booking) => (
                 <div className="compact-row" key={booking.id}>

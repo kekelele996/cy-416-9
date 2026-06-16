@@ -51,3 +51,15 @@ export const ROOM_CAPACITY_OPTIONS = [
   { label: '13-20 人', min: 13, max: 20 },
   { label: '20 人以上', min: 21, max: 99 },
 ];
+
+export const DEPARTMENTS = {
+  operations: '运营部',
+  product: '产品部',
+  design: '设计部',
+  engineering: '技术部',
+  hr: '人力资源部',
+  finance: '财务部',
+  marketing: '市场部',
+} as const;
+
+export type DepartmentKey = keyof typeof DEPARTMENTS;

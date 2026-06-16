@@ -18,6 +18,7 @@ export const FORM_MESSAGES = {
   startBeforeEnd: '结束时间必须晚于开始时间',
   roomUnavailable: '该会议室当前状态不允许预约',
   duplicatedRoomName: '会议室名称已存在',
+  roomNotAccessible: '该会议室仅供指定部门使用，您所在部门无法预约',
 };
 
 export const STORAGE_MESSAGES = {

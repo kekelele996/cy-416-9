@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { FORM_MESSAGES } from '@/constants/messages';
 import { RoomStatus } from '@/constants/room';
 import type { Room } from '@/models/room';
+import { isRoomAccessibleByDepartment } from '@/api/roomApi';
 
 export function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -23,6 +24,19 @@ export function assertRoomBookable(room?: Room): string | null {
   }
   if (room.status !== RoomStatus.AVAILABLE) {
     return FORM_MESSAGES.roomUnavailable;
+  }
+  return null;
+}
+
+export function assertRoomAccessible(room?: Room, department?: string, isAdmin = false): string | null {
+  if (isAdmin) {
+    return null;
+  }
+  if (!room) {
+    return FORM_MESSAGES.required;
+  }
+  if (!isRoomAccessibleByDepartment(room, department)) {
+    return FORM_MESSAGES.roomNotAccessible;
   }
   return null;
 }

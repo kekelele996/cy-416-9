@@ -12,17 +12,33 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBookingStore } from '@/stores/bookingStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { isRoomAccessibleByDepartment } from '@/api/roomApi';
 import { isSameDay } from '@/utils/timeRange';
 
 export function Dashboard() {
   const chartRef = useRef<HTMLDivElement>(null);
   const rooms = useRoomStore((state) => state.rooms);
+  const getAccessibleRooms = useRoomStore((state) => state.getAccessibleRooms);
   const bookings = useBookingStore((state) => state.bookings);
   const tokens = useThemeStore((state) => state.tokens);
   const mode = useThemeStore((state) => state.mode);
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
 
-  const todaysBookings = useMemo(() => bookings.filter((booking) => isSameDay(booking.start_time)), [bookings]);
+  const accessibleRooms = useMemo(() => {
+    return getAccessibleRooms(currentUser?.department, isAdmin);
+  }, [currentUser?.department, getAccessibleRooms, isAdmin, rooms]);
+
+  const todaysBookings = useMemo(() => {
+    const allToday = bookings.filter((booking) => isSameDay(booking.start_time));
+    if (isAdmin) {
+      return allToday;
+    }
+    return allToday.filter((booking) => {
+      const room = rooms.find((r) => r.id === booking.room_id);
+      return !room || isRoomAccessibleByDepartment(room, currentUser?.department);
+    });
+  }, [bookings, currentUser?.department, isAdmin, rooms]);
+
   const myTodayBookings = useMemo(
     () =>
       todaysBookings.filter(
@@ -30,9 +46,9 @@ export function Dashboard() {
       ),
     [currentUser?.id, currentUser?.name, todaysBookings],
   );
-  const availableRooms = rooms.filter((room) => room.status === RoomStatus.AVAILABLE).length;
+  const availableRooms = accessibleRooms.filter((room) => room.status === RoomStatus.AVAILABLE).length;
   const activeMeetings = todaysBookings.filter((booking) => booking.status === BookingStatus.ONGOING).length;
-  const utilization = rooms.length ? Math.round((todaysBookings.length / (rooms.length * 6)) * 100) : 0;
+  const utilization = accessibleRooms.length ? Math.round((todaysBookings.length / (accessibleRooms.length * 6)) * 100) : 0;
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -46,7 +62,7 @@ export function Dashboard() {
       grid: { top: 24, right: 18, bottom: 24, left: 36 },
       xAxis: {
         type: 'category',
-        data: rooms.map((room) => room.name.split(' ')[0]),
+        data: accessibleRooms.map((room) => room.name.split(' ')[0]),
         axisLine: { lineStyle: { color: tokens.border } },
         axisLabel: { color: tokens.muted },
       },
@@ -62,7 +78,7 @@ export function Dashboard() {
           type: 'bar',
           barWidth: 18,
           itemStyle: { color: '#2f5d50', borderRadius: [4, 4, 0, 0] },
-          data: rooms.map((room) => todaysBookings.filter((booking) => booking.room_id === room.id).length),
+          data: accessibleRooms.map((room) => todaysBookings.filter((booking) => booking.room_id === room.id).length),
         },
       ],
     });
@@ -73,7 +89,7 @@ export function Dashboard() {
       window.removeEventListener('resize', onResize);
       chart.dispose();
     };
-  }, [mode, rooms, todaysBookings, tokens.border, tokens.chartGrid, tokens.muted]);
+  }, [accessibleRooms, mode, todaysBookings, tokens.border, tokens.chartGrid, tokens.muted]);
 
   return (
     <div className="page-shell">
@@ -101,7 +117,7 @@ export function Dashboard() {
         </Col>
         <Col xs={24} md={8}>
           <div className="metric-panel">
-            <Statistic title="可预约会议室" value={availableRooms} suffix={`/ ${rooms.length}`} />
+            <Statistic title="可预约会议室" value={availableRooms} suffix={`/ ${accessibleRooms.length}`} />
           </div>
         </Col>
         <Col xs={24} md={8}>
@@ -121,7 +137,7 @@ export function Dashboard() {
         </section>
 
         <section className="surface-panel">
-          <BookingTimeline title="我的今日会议" bookings={myTodayBookings} rooms={rooms} dense />
+          <BookingTimeline title="我的今日会议" bookings={myTodayBookings} rooms={accessibleRooms} dense />
         </section>
       </div>
 
@@ -131,8 +147,8 @@ export function Dashboard() {
           <Typography.Text type="secondary">优先展示当前可预约空间</Typography.Text>
         </div>
         <div className="room-card-grid">
-          {rooms.slice(0, 3).map((room) => (
-            <RoomStatusCard key={room.id} room={room} bookings={bookings} />
+          {accessibleRooms.slice(0, 3).map((room) => (
+            <RoomStatusCard key={room.id} room={room} bookings={todaysBookings} />
           ))}
         </div>
       </section>

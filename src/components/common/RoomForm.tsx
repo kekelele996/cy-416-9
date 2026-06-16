@@ -1,7 +1,7 @@
-import { Button, Form, Input, InputNumber, Select, Space } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Space, Tag } from 'antd';
 import { useEffect } from 'react';
 import { FORM_MESSAGES } from '@/constants/messages';
-import { EQUIPMENT_LABELS, ROOM_FLOORS, ROOM_STATUS_LABELS, RoomEquipment, RoomStatus } from '@/constants/room';
+import { DEPARTMENTS, EQUIPMENT_LABELS, ROOM_FLOORS, ROOM_STATUS_LABELS, RoomEquipment, RoomStatus, type DepartmentKey } from '@/constants/room';
 import type { Room, RoomDraft } from '@/models/room';
 
 interface RoomFormProps {
@@ -10,6 +10,11 @@ interface RoomFormProps {
   onSubmit: (draft: RoomDraft) => Promise<void> | void;
   onCancel?: () => void;
 }
+
+const departmentOptions = Object.entries(DEPARTMENTS).map(([value, label]) => ({
+  label,
+  value: value as DepartmentKey,
+}));
 
 export function RoomForm({ room, submitting = false, onSubmit, onCancel }: RoomFormProps) {
   const [form] = Form.useForm<RoomDraft>();
@@ -25,6 +30,7 @@ export function RoomForm({ room, submitting = false, onSubmit, onCancel }: RoomF
         open_time: '08:30',
         close_time: '20:00',
         images: [],
+        departments: [],
       },
     );
   }, [form, room]);
@@ -64,6 +70,23 @@ export function RoomForm({ room, submitting = false, onSubmit, onCancel }: RoomF
             label: EQUIPMENT_LABELS[equipment],
             value: equipment,
           }))}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="适用部门"
+        name="departments"
+        help={
+          <span className="text-xs">
+            <Tag color="green" className="mr-1">提示</Tag>
+            不选则所有部门可用
+          </span>
+        }
+      >
+        <Select
+          mode="multiple"
+          placeholder="选择适用部门，不选则所有部门可用"
+          options={departmentOptions}
         />
       </Form.Item>
 

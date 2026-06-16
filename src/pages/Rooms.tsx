@@ -1,11 +1,12 @@
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Drawer, Select, Space, Typography } from 'antd';
+import { Button, Drawer, Select, Space, Tag, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EquipmentTag } from '@/components/common/EquipmentTag';
 import { EmptyState } from '@/components/common/EmptyState';
 import { RoomStatusCard } from '@/components/common/RoomStatusCard';
-import { EQUIPMENT_LABELS, ROOM_CAPACITY_OPTIONS, ROOM_FLOORS, RoomEquipment, RoomStatus } from '@/constants/room';
+import { DEPARTMENTS, EQUIPMENT_LABELS, ROOM_CAPACITY_OPTIONS, ROOM_FLOORS, RoomEquipment, RoomStatus } from '@/constants/room';
+import { useAuth } from '@/hooks/useAuth';
 import type { Room } from '@/models/room';
 import { useBookingStore } from '@/stores/bookingStore';
 import { useRoomStore } from '@/stores/roomStore';
@@ -13,13 +14,19 @@ import { formatCapacity, formatEquipmentList, formatRoomStatus } from '@/utils/f
 
 export function Rooms() {
   const rooms = useRoomStore((state) => state.rooms);
+  const getAccessibleRooms = useRoomStore((state) => state.getAccessibleRooms);
   const bookings = useBookingStore((state) => state.bookings);
   const filters = useRoomStore((state) => state.filters);
   const setFilters = useRoomStore((state) => state.setFilters);
+  const { currentUser, isAdmin } = useAuth();
   const [activeRoom, setActiveRoom] = useState<Room | undefined>();
 
+  const accessibleRooms = useMemo(() => {
+    return getAccessibleRooms(currentUser?.department, isAdmin);
+  }, [currentUser?.department, getAccessibleRooms, isAdmin, rooms]);
+
   const filteredRooms = useMemo(() => {
-    return rooms.filter((room) => {
+    return accessibleRooms.filter((room) => {
       const matchesFloor = !filters.floor || room.floor === filters.floor;
       const capacityOption = ROOM_CAPACITY_OPTIONS.find((option) => option.label === filters.capacityRange);
       const matchesCapacity =
@@ -30,7 +37,7 @@ export function Rooms() {
       const matchesStatus = !filters.status || room.status === filters.status;
       return matchesFloor && matchesCapacity && matchesEquipment && matchesStatus;
     });
-  }, [filters.capacityRange, filters.equipment, filters.floor, filters.status, rooms]);
+  }, [accessibleRooms, filters.capacityRange, filters.equipment, filters.floor, filters.status]);
 
   return (
     <div className="page-shell">
@@ -103,6 +110,18 @@ export function Rooms() {
             <Typography.Text>容量：{formatCapacity(activeRoom.capacity)}</Typography.Text>
             <Typography.Text>状态：{formatRoomStatus(activeRoom.status)}</Typography.Text>
             <Typography.Text>开放时间：{activeRoom.open_time} - {activeRoom.close_time}</Typography.Text>
+            <div>
+              <Typography.Text>适用部门：</Typography.Text>
+              <Space wrap className="mt-1">
+                {activeRoom.departments.length === 0 ? (
+                  <Tag color="green">所有部门</Tag>
+                ) : (
+                  activeRoom.departments.map((dept) => (
+                    <Tag key={dept}>{DEPARTMENTS[dept]}</Tag>
+                  ))
+                )}
+              </Space>
+            </div>
             <Typography.Text>设备：{formatEquipmentList(activeRoom.equipment)}</Typography.Text>
             <Space wrap>
               {activeRoom.equipment.map((equipment) => (

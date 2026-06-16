@@ -1,7 +1,11 @@
 import { nanoid } from '@/api/id';
+import { getCurrentUser } from '@/api/userApi';
 import { seedBookings } from '@/api/seed';
 import { BookingStatus } from '@/constants/booking';
+import { FORM_MESSAGES } from '@/constants/messages';
+import { UserRole } from '@/models/user';
 import type { Booking, BookingDraft } from '@/models/booking';
+import { getRooms, isRoomAccessibleByDepartment } from '@/api/roomApi';
 import {
   STORAGE_KEYS,
   getConflictCache,
@@ -33,8 +37,30 @@ export async function getBookings(): Promise<Booking[]> {
 }
 
 export async function createBooking(draft: BookingDraft): Promise<Booking> {
-  const bookings = await getBookings();
-  const conflicts = findRoomConflicts(bookings, draft.room_id, {
+  const [bookings, rooms, currentUser] = await Promise.all([
+    getBookings(),
+    getRooms(),
+    getCurrentUser(),
+  ]);
+
+  const targetRoom = rooms.find((room) => room.id === draft.room_id);
+  const isAdmin = currentUser?.role === UserRole.ADMIN;
+
+  if (targetRoom && !isAdmin) {
+    const hasAccess = isRoomAccessibleByDepartment(targetRoom, currentUser?.department);
+    if (!hasAccess) {
+      throw new Error(FORM_MESSAGES.roomNotAccessible);
+    }
+  }
+
+  const visibleBookings = isAdmin
+    ? bookings
+    : bookings.filter((booking) => {
+        const room = rooms.find((r) => r.id === booking.room_id);
+        return !room || isRoomAccessibleByDepartment(room, currentUser?.department);
+      });
+
+  const conflicts = findRoomConflicts(visibleBookings, draft.room_id, {
     start: draft.start_time,
     end: draft.end_time,
   });

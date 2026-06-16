@@ -1,4 +1,4 @@
-import { RoomEquipment, RoomStatus } from '@/constants/room';
+import { RoomEquipment, RoomStatus, type DepartmentKey } from '@/constants/room';
 
 export interface Room {
   id: string;
@@ -10,6 +10,7 @@ export interface Room {
   images: string[];
   open_time: string;
   close_time: string;
+  departments: DepartmentKey[];
 }
 
 export type RoomDraft = Omit<Room, 'id' | 'images'> & {

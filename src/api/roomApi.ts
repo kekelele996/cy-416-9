@@ -22,6 +22,21 @@ export async function getRooms(): Promise<Room[]> {
   return readCollection<Room[]>(STORAGE_KEYS.rooms, seedRooms);
 }
 
+export async function getRoomsByDepartment(department?: string): Promise<Room[]> {
+  const rooms = await getRooms();
+  if (!department) {
+    return rooms;
+  }
+  return rooms.filter((room) => room.departments.length === 0 || room.departments.includes(department as any));
+}
+
+export function isRoomAccessibleByDepartment(room: Room, department?: string): boolean {
+  if (!department) {
+    return true;
+  }
+  return room.departments.length === 0 || room.departments.includes(department as any);
+}
+
 export async function upsertRoom(draft: RoomDraft): Promise<Room> {
   const rooms = await getRooms();
   const nextRoom: Room = {
@@ -34,6 +49,7 @@ export async function upsertRoom(draft: RoomDraft): Promise<Room> {
     images: draft.images?.length ? draft.images : ['linear-gradient(135deg, #dbe7db, #f1e4c2)'],
     open_time: draft.open_time,
     close_time: draft.close_time,
+    departments: draft.departments ?? [],
   };
 
   const exists = rooms.some((room) => room.id === nextRoom.id);

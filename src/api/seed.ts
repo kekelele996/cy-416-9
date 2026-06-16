@@ -46,6 +46,7 @@ export const seedRooms: Room[] = [
     images: ['linear-gradient(135deg, #e5f0d5, #cadfd1)'],
     open_time: '08:30',
     close_time: '20:00',
+    departments: ['product', 'design'],
   },
   {
     id: 'room-harbor',
@@ -57,6 +58,7 @@ export const seedRooms: Room[] = [
     images: ['linear-gradient(135deg, #dbe8ee, #f2e6c8)'],
     open_time: '08:00',
     close_time: '21:00',
+    departments: ['engineering', 'product'],
   },
   {
     id: 'room-slate',
@@ -68,6 +70,7 @@ export const seedRooms: Room[] = [
     images: ['linear-gradient(135deg, #e8e0d0, #b9c1b8)'],
     open_time: '09:00',
     close_time: '18:30',
+    departments: ['operations', 'finance'],
   },
   {
     id: 'room-courtyard',
@@ -79,6 +82,7 @@ export const seedRooms: Room[] = [
     images: ['linear-gradient(135deg, #d8e7c2, #f0d89a)'],
     open_time: '08:00',
     close_time: '22:00',
+    departments: [],
   },
   {
     id: 'room-archive',
@@ -90,6 +94,7 @@ export const seedRooms: Room[] = [
     images: ['linear-gradient(135deg, #d7d2c9, #c4beb2)'],
     open_time: '09:30',
     close_time: '18:00',
+    departments: ['hr'],
   },
 ];
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { upsertRoom, deleteRoom, getRooms, updateRoomStatus } from '@/api/roomApi';
+import { upsertRoom, deleteRoom, getRooms, updateRoomStatus, getRoomsByDepartment } from '@/api/roomApi';
 import { ROOM_STATUS_MESSAGES } from '@/constants/messages';
 import { RoomStatus } from '@/constants/room';
 import type { Room, RoomDraft } from '@/models/room';
@@ -22,9 +22,10 @@ interface RoomState {
   saveRoom: (draft: RoomDraft) => Promise<void>;
   setRoomStatus: (roomId: string, status: RoomStatus) => Promise<void>;
   removeRoom: (roomId: string) => Promise<void>;
+  getAccessibleRooms: (department?: string, isAdmin?: boolean) => Room[];
 }
 
-export const useRoomStore = create<RoomState>((set) => ({
+export const useRoomStore = create<RoomState>((set, get) => ({
   rooms: [],
   filters: {},
   loading: false,
@@ -65,5 +66,12 @@ export const useRoomStore = create<RoomState>((set) => ({
     const rooms = await deleteRoom(roomId);
     set({ rooms });
     roomflowMessage.warning('会议室已删除');
+  },
+  getAccessibleRooms(department, isAdmin = false) {
+    const { rooms } = get();
+    if (isAdmin) {
+      return rooms;
+    }
+    return rooms.filter((room) => room.departments.length === 0 || department ? room.departments.includes(department as any) : true);
   },
 }));
